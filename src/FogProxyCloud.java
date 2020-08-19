@@ -1,56 +1,49 @@
+import FogOSClient.FogOSClient;
+import FogOSContent.Content;
 import FogOSProxy.*;
 import FogOSResource.Resource;
 
+import FogOSService.Service;
 import com.jcraft.jsch.*;
 import java.awt.*;
 import java.io.InputStream;
 
 
 public class FogProxyCloud {
-	
-    static Resource_CPU resource_cpu = new Resource_CPU("CPU","","percent",false);
-    static Resource_MEM resource_mem = new Resource_MEM("MEMORY","","MB",false);
-    static Resource_DISK resource_disk = new Resource_DISK("DISK","","GB",false);
-    
-    static boolean ischanged=false;
-    
-    private static Thread monitoringThread;
+	private static FogOSClient fogos;
+	private static final rootPath = "D:\tmp";
     
     public static void main(String[] args) {
+    	// 1. Initialize the FogOSClient instance.
+		// This will automatically build the contentStore inside the core,
+		// a list of services, and a list of resources
+        fogos = new FogOSClient(rootPath);
 
-        String name = "FogOSProxy";
+        // 2. Add manually resource, content, or service
+		// 2-1. Add resources to be monitored
+		Resource_CPU resource_cpu = new Resource_CPU("CPU","","percent",false);
+		Resource_MEM resource_mem = new Resource_MEM("MEMORY","","MB",false);
+		Resource_DISK resource_disk = new Resource_DISK("DISK","","GB",false);
 
-        
-        String priv_str = new String("private key"); //key for AWS
-        byte[] priv = priv_str.getBytes();
-        
-        String host = new String("IP Address"); // AWS IP address
-     
-        String pub_str = new String("public_key"); //not used
-        byte[] pub = pub_str.getBytes();
-        
-        FogProxy proxy = new FogProxy(name, priv, pub);
+		fogos.addResource(resource_cpu);
+		fogos.addResource(resource_disk);
+		fogos.addResource(resource_mem);
 
-        monitoringThread = new Thread(new monitoring(priv_str, host));
-        monitoringThread.start();
-        
+		// 2-2. Add content manually if any
+		Content test_content = new Content("test_content", "D:\tmp\test.jpg", true);
+		fogos.addContent(test_content);
 
-        //add CPU, Memory, Disk Resource
+		// 2-3. Add service to run
+		Service test_service = new Service("test_service", true);
+		fogos.addService(test_service);
         
-        proxy.addResource(resource_cpu);
-        proxy.addResource(resource_mem);
-        proxy.addResource(resource_disk);
-      
-        
-        // TODO: Add content (later)
-      
+        // 3. begin the FogOS interaction
+		fogos.begin();
 
-        // TODO: Add service (later)
-   
-      
+		// 4. TODO: (hwlee) finalize the FogOS interaction
+		// fogos.exit();
     }
-    
-    
+
     static class Resource_CPU extends Resource {
 
     	Resource_CPU(String name, String max, String unit, boolean onDemand) {
@@ -60,10 +53,11 @@ public class FogProxyCloud {
 
     	public void monitorResource() {
     		// TODO Auto-generated method stub
-    		
+
     	}
-    	
+
     }
+
     static class Resource_MEM extends Resource {
 
     	Resource_MEM(String name, String max, String unit, boolean onDemand) {
@@ -74,12 +68,12 @@ public class FogProxyCloud {
 
     	public void monitorResource() {
     		// TODO Auto-generated method stub
-    		
-    	}
-    	
-    }
-    static class Resource_DISK extends Resource {
 
+    	}
+
+    }
+
+    static class Resource_DISK extends Resource {
 
     	Resource_DISK(String name, String max, String unit, boolean onDemand) {
     		super(name, max, unit, onDemand);
@@ -88,10 +82,11 @@ public class FogProxyCloud {
 
     	public void monitorResource() {
     		// TODO Auto-generated method stub
-    		
+
     	}
-    	
     }
+
+    // TODO: (syseok) Need to implement monitoring stuffs inside the classes (monitorResource)
     private static class monitoring implements Runnable{
     	
     	String privkey_str = null;
