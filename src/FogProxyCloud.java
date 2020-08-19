@@ -21,10 +21,10 @@ public class FogProxyCloud {
         String name = "FogOSProxy";
 
         
-        String priv_str = new String("C:/Users/syseok/Desktop/key/aws_private_key.pem"); //key for AWS
+        String priv_str = new String("private key"); //key for AWS
         byte[] priv = priv_str.getBytes();
         
-        String host = new String("3.34.197.215"); // AWS IP address
+        String host = new String("IP Address"); // AWS IP address
      
         String pub_str = new String("public_key"); //not used
         byte[] pub = pub_str.getBytes();
