@@ -21,9 +21,26 @@ public class FogProxyCloud {
 
         // 2. Add manually resource, content, or service
 		// 2-1. Add resources to be monitored
-		Resource_CPU resource_cpu = new Resource_CPU("CPU","","percent",false);
-		Resource_MEM resource_mem = new Resource_MEM("MEMORY","","MB",false);
-		Resource_DISK resource_disk = new Resource_DISK("DISK","","GB",false);
+		Resource resource_cpu = new Resource("CPU","","percent",false) {
+			@Override
+			public void monitorResource() {
+
+			}
+		};
+
+		Resource resource_mem = new Resource("MEMORY","","MB",false) {
+			@Override
+			public void monitorResource() {
+
+			}
+		};
+
+		Resource resource_disk = new Resource("DISK","","GB",false) {
+			@Override
+			public void monitorResource() {
+
+			}
+		};
 
 		fogos.addResource(resource_cpu);
 		fogos.addResource(resource_disk);
@@ -42,48 +59,6 @@ public class FogProxyCloud {
 
 		// 4. TODO: (hwlee) finalize the FogOS interaction
 		// fogos.exit();
-    }
-
-    static class Resource_CPU extends Resource {
-
-    	Resource_CPU(String name, String max, String unit, boolean onDemand) {
-    		super(name, max, unit, onDemand);
-    		// TODO Auto-generated constructor stub
-    	}
-
-    	public void monitorResource() {
-    		// TODO Auto-generated method stub
-
-    	}
-
-    }
-
-    static class Resource_MEM extends Resource {
-
-    	Resource_MEM(String name, String max, String unit, boolean onDemand) {
-    		super(name, max, unit, onDemand);
-    		// TODO Auto-generated constructor stub
-    	}
-
-
-    	public void monitorResource() {
-    		// TODO Auto-generated method stub
-
-    	}
-
-    }
-
-    static class Resource_DISK extends Resource {
-
-    	Resource_DISK(String name, String max, String unit, boolean onDemand) {
-    		super(name, max, unit, onDemand);
-    		// TODO Auto-generated constructor stub
-    	}
-
-    	public void monitorResource() {
-    		// TODO Auto-generated method stub
-
-    	}
     }
 
     // TODO: (syseok) Need to implement monitoring stuffs inside the classes (monitorResource)
