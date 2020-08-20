@@ -1,193 +1,205 @@
+import FogOSClient.FogOSClient;
+import FogOSContent.Content;
 import FogOSProxy.*;
 import FogOSResource.Resource;
 
+import FogOSService.Service;
 import com.jcraft.jsch.*;
 import java.awt.*;
 import java.io.InputStream;
 
 
 public class FogProxyCloud {
+	private static FogOSClient fogos;
+
+	private static String key = "AWS key";
+	private static String host = "AWS IP";
+
+	private static final rootPath = "D:\tmp";
 	
-    static Resource_CPU resource_cpu = new Resource_CPU("CPU","","percent",false);
-    static Resource_MEM resource_mem = new Resource_MEM("MEMORY","","MB",false);
-    static Resource_DISK resource_disk = new Resource_DISK("DISK","","GB",false);
-    
-    static boolean ischanged=false;
-    
-    private static Thread monitoringThread;
-    
     public static void main(String[] args) {
+    	// 1. Initialize the FogOSClient instance.
+		// This will automatically build the contentStore inside the core,
+		// a list of services, and a list of resources
+    	
+        fogos = new FogOSClient(rootPath);
 
-        String name = "FogOSProxy";
+        
+        // 2. Add manually resource, content, or service
+		// 2-1. Add resources to be monitored
+		Resource_CPU resource_cpu = new Resource_CPU("CPU","","percent",false);
+		Resource_MEM resource_mem = new Resource_MEM("MEMORY","","KB",false);
+		Resource_DISK resource_disk = new Resource_DISK("DISK","","KB",false);
 
-        
-        String priv_str = new String("private key"); //key for AWS
-        byte[] priv = priv_str.getBytes();
-        
-        String host = new String("IP Address"); // AWS IP address
-     
-        String pub_str = new String("public_key"); //not used
-        byte[] pub = pub_str.getBytes();
-        
-        FogProxy proxy = new FogProxy(name, priv, pub);
+		Thread t_CPU = new Thread(resource_cpu);
+		Thread t_MEM = new Thread(resource_mem);
+		Thread t_DISK = new Thread(resource_disk);
+		
+		t_CPU.start();
+		t_MEM.start();
+		t_DISK.start();
+		
+		while(true)
+		{
+			System.out.println(resource_cpu.getCurr());
+			System.out.println(resource_mem.getCurr());
+			System.out.println(resource_disk.getCurr());
+			try {
+			Thread.sleep(1000);
+			}catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+		
+		fogos.addResource(resource_cpu);
+		fogos.addResource(resource_disk);
+		fogos.addResource(resource_mem);
 
-        monitoringThread = new Thread(new monitoring(priv_str, host));
-        monitoringThread.start();
-        
+		// 2-2. Add content manually if any
+		Content test_content = new Content("test_content", "D:\tmp\test.jpg", true);
+		fogos.addContent(test_content);
 
-        //add CPU, Memory, Disk Resource
+		// 2-3. Add service to run
+		Service test_service = new Service("test_service", true);
+		fogos.addService(test_service);
         
-        proxy.addResource(resource_cpu);
-        proxy.addResource(resource_mem);
-        proxy.addResource(resource_disk);
-      
-        
-        // TODO: Add content (later)
-      
+        // 3. begin the FogOS interaction
+		fogos.begin();
 
-        // TODO: Add service (later)
-   
-      
+		// 4. TODO: (hwlee) finalize the FogOS interaction
+		// fogos.exit();
     }
-    
-    
-    static class Resource_CPU extends Resource {
 
-    	Resource_CPU(String name, String max, String unit, boolean onDemand) {
-    		super(name, max, unit, onDemand);
-    		// TODO Auto-generated constructor stub
-    	}
+	static class Resource_CPU extends Resource implements Runnable {
+
+		Resource_CPU(String name, String max, String unit, boolean onDemand) {
+			super(name, max, unit, onDemand);
+			this.setMax("100");
+			
+			
+			
+			// TODO Auto-generated constructor stub
+		}
+		public void run() {
+			while(true) {
+			String command =  "top -bn1 | grep load | awk '{printf \"%.2f\\n\", $(NF-2)}'\n";
+			this.setCurr(monitoring(key,host,command)); 
+
+			}
+		}
 
     	public void monitorResource() {
-    		// TODO Auto-generated method stub
     		
+
     	}
-    	
+
+
     }
-    static class Resource_MEM extends Resource {
+
+    static class Resource_MEM extends Resource implements Runnable {
 
     	Resource_MEM(String name, String max, String unit, boolean onDemand) {
     		super(name, max, unit, onDemand);
+
+			String command =  "free | grep Mem |awk '{print $2}'";
+			this.setMax(monitoring(key,host,command)); 
+    		
     		// TODO Auto-generated constructor stub
     	}
 
+		public void run() {
+			while(true) {
+
+			String command =  "free | grep Mem |awk '{print $3}'";
+			this.setCurr(monitoring(key,host,command)); 
+
+			}
+		}
 
     	public void monitorResource() {
     		// TODO Auto-generated method stub
-    		
-    	}
-    	
-    }
-    static class Resource_DISK extends Resource {
 
+    	}
+
+    }
+
+    static class Resource_DISK extends Resource implements Runnable {
 
     	Resource_DISK(String name, String max, String unit, boolean onDemand) {
     		super(name, max, unit, onDemand);
+
+			String command =  "df -P | grep -v ^Filesystem | awk '{sum += $2} END { print sum }'";
+			this.setMax(monitoring(key,host,command)); 
+
     		// TODO Auto-generated constructor stub
     	}
 
+		public void run() {
+			while(true) {
+
+			String command =  "df -P | grep -v ^Filesystem | awk '{sum += $3} END { print sum }'";
+			this.setCurr(monitoring(key,host,command)); 
+
+			}
+		}
     	public void monitorResource() {
     		// TODO Auto-generated method stub
-    		
+
     	}
+    }
+
+    // TODO: (syseok) Need to implement monitoring stuffs inside the classes (monitorResource)
+    private static String monitoring(String privkey_str, String host_ip, String command) {
+
+        String result = null;
+        
+		try {
+        JSch jsch=new JSch();
+        jsch.addIdentity(privkey_str);
+        JSch.setConfig("StrictHostKeyChecking", "no");
+          	  
+        String user="ubuntu";
+
+        Session session=jsch.getSession(user, host_ip, 22);
+        session.connect(30000); 
+        
+        ChannelExec channel = (ChannelExec)session.openChannel("exec");
+        channel.setCommand(command);
+        channel.setErrStream(System.err);
+        channel.connect();
+      
+
+        InputStream input = channel.getInputStream();        
+        
+        byte[] tmp = new byte[1024];
+
+        
+        while (true) {
+          while (input.available() > 0) {
+              int i = input.read(tmp, 0, 1024);
+              if (i < 0) break;
+              result=new String(tmp, 0, i);                                
+          }
+          if (channel.isClosed()){
+          	System.out.println("exit-status: " + channel.getExitStatus());
+              break;
+          }       
+          Thread.sleep(1000);
+        }
+
+        channel.disconnect();
+        session.disconnect();
+        
+		} catch (Exception e)
+		{
+			System.out.println(e);
+		}
+
+        String[] resource_info = result.split("\\n");
+    	     
+		return resource_info[0];
     	
     }
-    private static class monitoring implements Runnable{
-    	
-    	String privkey_str = null;
-    	String host_ip = null;;
-    	public monitoring(String privatekey,String host) {
-    		privkey_str = new String(privatekey);
-    		host_ip = new String(host);
-    	}
-    	public void run() {
-    		// TODO Auto-generated method stub
-    		while(true)
-    		{
-    		try{
-    			  System.out.println("starting ssh...");
-    	          JSch jsch=new JSch();
-    	          jsch.addIdentity(privkey_str);
-    	          JSch.setConfig("StrictHostKeyChecking", "no");
-    	            	  
-    	          String user="ubuntu";
-
-    	          Session session=jsch.getSession(user, host_ip, 22);
-    	          session.connect(30000); 	
-    	          
-    	          String command =  "free -m | awk 'NR==2{printf \"%s/%s\\n\", $3,$2 }'\n" +  //memory
-    	          		"df -h | awk '$NF==\"/\"{printf \"%d/%d\\n\", $3,$2}'\n" + //disk
-    	          		"top -bn1 | grep load | awk '{printf \"%.2f\\n\", $(NF-2)}'\n" + //CPU
-    	          		"ps aux | grep nginx | grep master"; //service - ex. nginx
-    	          //https://unix.stackexchange.com/questions/119126/command-to-display-memory-usage-disk-usage-and-cpu-load;
-    	          
-    	          ChannelExec channel = (ChannelExec)session.openChannel("exec");
-    	          channel.setCommand(command);
-    	          channel.setErrStream(System.err);
-    	          channel.connect();
-    	        
-
-    	          InputStream input = channel.getInputStream();        
-    	          
-    	          byte[] tmp = new byte[1024];
-    	          String result = null;
-    	          
-    	          while (true) {
-    	            while (input.available() > 0) {
-    	                int i = input.read(tmp, 0, 1024);
-    	                if (i < 0) break;
-    	                result=new String(tmp, 0, i);                                
-    	            }
-    	            if (channel.isClosed()){
-    	            	System.out.println("exit-status: " + channel.getExitStatus());
-    	                break;
-    	            }       
-    	            Thread.sleep(1000);
-    	          }
-
-    	          System.out.println("closing ssh...");
-    	          channel.disconnect();
-    	          session.disconnect();
-    	          
-    	          String[] resource_info = result.split("\\n");
-    	          
-
-    	          if(!resource_mem.getCurr().equals(resource_info[0]))
-    	          {
-    	        	  resource_mem = new Resource_MEM("MEMORY",resource_info[0],"MB",false);
-    	        	  ischanged = true;
-    	          }
-    	          if(!resource_disk.getCurr().equals(resource_info[1]))
-    	          {
-    	        	  resource_disk = new Resource_DISK("DISK",resource_info[1],"GB",false);
-    	        	  ischanged = true;
-    	          }
-    	          if(!resource_cpu.getCurr().equals(resource_info[2]))
-    	          {
-    	        	  resource_cpu = new Resource_CPU("CPU",resource_info[2],"%",false);
-    	        	  ischanged = true;
-    	          }
-    	          
-    	          if(ischanged) { //update only when there is any change
-
-    			      System.out.println(resource_mem.getName()+" : " + resource_mem.getCurr() + resource_mem.getUnit());
-    			      System.out.println(resource_disk.getName()+" : " + resource_disk.getCurr() + resource_disk.getUnit());
-    			      System.out.println(resource_cpu.getName()+" : " + resource_cpu.getCurr() + resource_cpu.getUnit());
-    			      ischanged=false;
-    	    	  }
-    	    	  
-    		      System.out.println(resource_info[3]);
-    		      
-    	          Thread.sleep(3000);
-    	          
-	    		}
-	            catch(Exception e){
-	              System.out.println(e);
-	            }
-    		
-    		}
-    	}
-    	
-    }
+//    
     
 }
