@@ -30,26 +30,6 @@ public class FogProxyCloud {
 		Resource_CPU resource_cpu = new Resource_CPU("CPU","","percent",false);
 		Resource_MEM resource_mem = new Resource_MEM("MEMORY","","KB",false);
 		Resource_DISK resource_disk = new Resource_DISK("DISK","","KB",false);
-
-		Thread t_CPU = new Thread(resource_cpu);
-		Thread t_MEM = new Thread(resource_mem);
-		Thread t_DISK = new Thread(resource_disk);
-		
-		t_CPU.start();
-		t_MEM.start();
-		t_DISK.start();
-		
-		while(true)
-		{
-			System.out.println(resource_cpu.getCurr());
-			System.out.println(resource_mem.getCurr());
-			System.out.println(resource_disk.getCurr());
-			try {
-			Thread.sleep(1000);
-			}catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-		}
 		
 		fogos.addResource(resource_cpu);
 		fogos.addResource(resource_disk);
@@ -70,60 +50,47 @@ public class FogProxyCloud {
 		// fogos.exit();
     }
 
-	static class Resource_CPU extends Resource implements Runnable {
+	static class Resource_CPU extends Resource {
 
 		Resource_CPU(String name, String max, String unit, boolean onDemand) {
 			super(name, max, unit, onDemand);
-			this.setMax("100");
-			
-			
-			
-			// TODO Auto-generated constructor stub
+			this.setMax("100");		
+		
 		}
-		public void run() {
-			while(true) {
-			String command =  "top -bn1 | grep load | awk '{printf \"%.2f\\n\", $(NF-2)}'\n";
-			this.setCurr(monitoring(key,host,command)); 
 
-			}
-		}
 
     	public void monitorResource() {
-    		
-
+			while(true) {
+				String command =  "top -bn1 | grep load | awk '{printf \"%.2f\\n\", $(NF-2)}'\n";
+				this.setCurr(monitoring(key,host,command)); 
+	
+			}
     	}
-
 
     }
 
-    static class Resource_MEM extends Resource implements Runnable {
+    static class Resource_MEM extends Resource {
 
     	Resource_MEM(String name, String max, String unit, boolean onDemand) {
     		super(name, max, unit, onDemand);
 
 			String command =  "free | grep Mem |awk '{print $2}'";
-			this.setMax(monitoring(key,host,command)); 
+			this.setMax(monitoring(key,host,command)); 	
     		
-    		// TODO Auto-generated constructor stub
     	}
 
-		public void run() {
-			while(true) {
-
-			String command =  "free | grep Mem |awk '{print $3}'";
-			this.setCurr(monitoring(key,host,command)); 
-
-			}
-		}
 
     	public void monitorResource() {
-    		// TODO Auto-generated method stub
+			while(true) {
 
+				String command =  "free | grep Mem |awk '{print $3}'";
+				this.setCurr(monitoring(key,host,command)); 
+	
+				}
     	}
-
     }
 
-    static class Resource_DISK extends Resource implements Runnable {
+    static class Resource_DISK extends Resource {
 
     	Resource_DISK(String name, String max, String unit, boolean onDemand) {
     		super(name, max, unit, onDemand);
@@ -134,17 +101,14 @@ public class FogProxyCloud {
     		// TODO Auto-generated constructor stub
     	}
 
-		public void run() {
+
+    	public void monitorResource() {
 			while(true) {
 
-			String command =  "df -P | grep -v ^Filesystem | awk '{sum += $3} END { print sum }'";
-			this.setCurr(monitoring(key,host,command)); 
-
+				String command =  "df -P | grep -v ^Filesystem | awk '{sum += $3} END { print sum }'";
+				this.setCurr(monitoring(key,host,command)); 
+	
 			}
-		}
-    	public void monitorResource() {
-    		// TODO Auto-generated method stub
-
     	}
     }
 
