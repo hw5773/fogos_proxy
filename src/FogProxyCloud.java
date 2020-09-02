@@ -11,7 +11,7 @@ import java.io.InputStream;
 
 public class FogProxyCloud {
 	private static FogOSClient fogos;
-	private static final rootPath = "D:\tmp";
+	private static final String rootPath = "D:\tmp";
     
     public static void main(String[] args) {
     	// 1. Initialize the FogOSClient instance.
@@ -57,10 +57,11 @@ public class FogProxyCloud {
         // 3. begin the FogOS interaction
 		fogos.begin();
 
-		// 4. TODO: (hwlee) finalize the FogOS interaction
-		// fogos.exit();
+		// 4. finalize the FogOS interaction
+		fogos.exit();
     }
 
+    /*
     // TODO: (syseok) Need to implement monitoring stuffs inside the classes (monitorResource)
     private static class monitoring implements Runnable{
     	
@@ -159,5 +160,5 @@ public class FogProxyCloud {
     	}
     	
     }
-    
+    */
 }
