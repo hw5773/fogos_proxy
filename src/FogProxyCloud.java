@@ -1,19 +1,24 @@
+import FlexID.InterfaceType;
+import FlexID.Locator;
 import FogOSClient.FogOSClient;
 import FogOSContent.Content;
-import FogOSProxy.*;
 import FogOSResource.Resource;
-
+import FogOSResource.ResourceType;
 import FogOSService.Service;
-import com.jcraft.jsch.*;
-import java.awt.*;
-import java.io.InputStream;
+import FogOSService.ServiceContext;
+import FogOSService.ServiceType;
+
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.security.*;
+import java.security.spec.InvalidKeySpecException;
 
 
 public class FogProxyCloud {
 	private static FogOSClient fogos;
 	private static final String rootPath = "D:\tmp";
     
-    public static void main(String[] args) {
+    public static void main(String[] args) throws NoSuchAlgorithmException {
     	// 1. Initialize the FogOSClient instance.
 		// This will automatically build the contentStore inside the core,
 		// a list of services, and a list of resources
@@ -21,21 +26,21 @@ public class FogProxyCloud {
 
         // 2. Add manually resource, content, or service
 		// 2-1. Add resources to be monitored
-		Resource resource_cpu = new Resource("CPU","","percent",false) {
+		Resource resource_cpu = new Resource("CPU", ResourceType.CPU, "","percent",false) {
 			@Override
 			public void monitorResource() {
 
 			}
 		};
 
-		Resource resource_mem = new Resource("MEMORY","","MB",false) {
+		Resource resource_mem = new Resource("MEMORY", ResourceType.Memory, "","MB",false) {
 			@Override
 			public void monitorResource() {
 
 			}
 		};
 
-		Resource resource_disk = new Resource("DISK","","GB",false) {
+		Resource resource_disk = new Resource("DISK", ResourceType.Disk, "","GB",false) {
 			@Override
 			public void monitorResource() {
 
@@ -51,14 +56,49 @@ public class FogProxyCloud {
 		fogos.addContent(test_content);
 
 		// 2-3. Add service to run
-		Service test_service = new Service("test_service", true);
-		fogos.addService(test_service);
+		KeyPairGenerator serviceKeyPairGenerator = KeyPairGenerator.getInstance("RSA");
+		serviceKeyPairGenerator.initialize(2048);
+		KeyPair serviceKeyPair = serviceKeyPairGenerator.genKeyPair();
+		Locator serviceLoc = new Locator(InterfaceType.WIFI, "127.0.0.1", 5550);
+		Locator proxyLoc = new Locator(InterfaceType.ETH, "127.0.0.1", 5551);
+		ServiceContext testServiceCtx = new ServiceContext("FogClientTestService",
+				ServiceType.Streaming, serviceKeyPair, serviceLoc, true, proxyLoc);
+		Service testService = new Service(testServiceCtx) {
+			@Override
+			public void initService() throws NoSuchAlgorithmException, InvalidKeySpecException, InvalidKeyException, SignatureException, InterruptedException {
+				super.initService();
+			}
+
+			@Override
+			public void processInputFromProxy() {
+				super.processInputFromProxy();
+			}
+
+			@Override
+			public void processOutputToProxy() {
+				super.processOutputToProxy();
+			}
+
+			@Override
+			public void processInputFromPeer() {
+
+			}
+
+			@Override
+			public void processOutputToPeer() {
+
+			}
+		};
+		fogos.addService(testService);
         
         // 3. begin the FogOS interaction
 		fogos.begin();
+		System.out.println("[FogProxyCloud] FogOS Core begins.");
 
 		// 4. finalize the FogOS interaction
 		fogos.exit();
+		System.out.println("[FogProxyCloud] FogOS Core quits.");
+		System.exit(0);
     }
 
     /*
