@@ -8,15 +8,24 @@ import FogOSService.Service;
 import FogOSService.ServiceContext;
 import FogOSService.ServiceType;
 
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.security.*;
 import java.security.spec.InvalidKeySpecException;
 
+import com.jcraft.jsch.ChannelExec;
+import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.Session;
+
 
 public class FogProxyCloud {
 	private static FogOSClient fogos;
-	private static final String rootPath = "D:\tmp";
+	
+	private static String key = "key";
+	private static String host = "ip address";
+	
+	private static final String rootPath = "D:\\tmp";
     
     public static void main(String[] args) throws NoSuchAlgorithmException {
     	// 1. Initialize the FogOSClient instance.
@@ -29,24 +38,35 @@ public class FogProxyCloud {
 		Resource resource_cpu = new Resource("CPU", ResourceType.CPU, "","percent",false) {
 			@Override
 			public void monitorResource() {
-
+				this.setMax("1");
+				String command =  "top -bn1 | grep load | awk '{printf \"%.2f\\n\", $(NF-2)}'\n";
+				this.setCurr(monitoring(key,host,command)); 
 			}
 		};
 
-		Resource resource_mem = new Resource("MEMORY", ResourceType.Memory, "","MB",false) {
+		Resource resource_mem = new Resource("MEMORY", ResourceType.Memory, "","KB",false) {
 			@Override
 			public void monitorResource() {
+				String command =  "free | grep Mem |awk '{print $2}'";
+				this.setMax(monitoring(key,host,command)); 	
+				command =  "free | grep Mem |awk '{print $3}'";
+				this.setCurr(monitoring(key,host,command)); 
 
 			}
 		};
 
-		Resource resource_disk = new Resource("DISK", ResourceType.Disk, "","GB",false) {
+		Resource resource_disk = new Resource("DISK", ResourceType.Disk, "","KB",false) {
 			@Override
 			public void monitorResource() {
+				String command =  "df -P | grep -v ^Filesystem | awk '{sum += $2} END { print sum }'";
+				this.setMax(monitoring(key,host,command)); 
+				command =  "df -P | grep -v ^Filesystem | awk '{sum += $3} END { print sum }'";
+				this.setCurr(monitoring(key,host,command)); 
 
 			}
 		};
 
+		
 		fogos.addResource(resource_cpu);
 		fogos.addResource(resource_disk);
 		fogos.addResource(resource_mem);
@@ -95,110 +115,61 @@ public class FogProxyCloud {
 		fogos.begin();
 		System.out.println("[FogProxyCloud] FogOS Core begins.");
 
-		// 4. finalize the FogOS interaction
+//		 4. finalize the FogOS interaction
 		fogos.exit();
 		System.out.println("[FogProxyCloud] FogOS Core quits.");
 		System.exit(0);
     }
 
-    /*
-    // TODO: (syseok) Need to implement monitoring stuffs inside the classes (monitorResource)
-    private static class monitoring implements Runnable{
-    	
-    	String privkey_str = null;
-    	String host_ip = null;;
-    	public monitoring(String privatekey,String host) {
-    		privkey_str = new String(privatekey);
-    		host_ip = new String(host);
-    	}
-    	public void run() {
-    		// TODO Auto-generated method stub
-    		while(true)
-    		{
-    		try{
-    			  System.out.println("starting ssh...");
-    	          JSch jsch=new JSch();
-    	          jsch.addIdentity(privkey_str);
-    	          JSch.setConfig("StrictHostKeyChecking", "no");
-    	            	  
-    	          String user="ubuntu";
+    private static String monitoring(String privkey_str, String host_ip, String command) {
 
-    	          Session session=jsch.getSession(user, host_ip, 22);
-    	          session.connect(30000); 	
-    	          
-    	          String command =  "free -m | awk 'NR==2{printf \"%s/%s\\n\", $3,$2 }'\n" +  //memory
-    	          		"df -h | awk '$NF==\"/\"{printf \"%d/%d\\n\", $3,$2}'\n" + //disk
-    	          		"top -bn1 | grep load | awk '{printf \"%.2f\\n\", $(NF-2)}'\n" + //CPU
-    	          		"ps aux | grep nginx | grep master"; //service - ex. nginx
-    	          //https://unix.stackexchange.com/questions/119126/command-to-display-memory-usage-disk-usage-and-cpu-load;
-    	          
-    	          ChannelExec channel = (ChannelExec)session.openChannel("exec");
-    	          channel.setCommand(command);
-    	          channel.setErrStream(System.err);
-    	          channel.connect();
-    	        
+        String result = null;
+        
+		try {
+        JSch jsch=new JSch();
+        jsch.addIdentity(privkey_str);
+        JSch.setConfig("StrictHostKeyChecking", "no");
+          	  
+        String user="ubuntu";
 
-    	          InputStream input = channel.getInputStream();        
-    	          
-    	          byte[] tmp = new byte[1024];
-    	          String result = null;
-    	          
-    	          while (true) {
-    	            while (input.available() > 0) {
-    	                int i = input.read(tmp, 0, 1024);
-    	                if (i < 0) break;
-    	                result=new String(tmp, 0, i);                                
-    	            }
-    	            if (channel.isClosed()){
-    	            	System.out.println("exit-status: " + channel.getExitStatus());
-    	                break;
-    	            }       
-    	            Thread.sleep(1000);
-    	          }
+        Session session=jsch.getSession(user, host_ip, 22);
+        session.connect(30000); 
+        
+        ChannelExec channel = (ChannelExec)session.openChannel("exec");
+        channel.setCommand(command);
+        channel.setErrStream(System.err);
+        channel.connect();
+      
 
-    	          System.out.println("closing ssh...");
-    	          channel.disconnect();
-    	          session.disconnect();
-    	          
-    	          String[] resource_info = result.split("\\n");
-    	          
+        InputStream input = channel.getInputStream();        
+        
+        byte[] tmp = new byte[1024];
 
-    	          if(!resource_mem.getCurr().equals(resource_info[0]))
-    	          {
-    	        	  resource_mem = new Resource_MEM("MEMORY",resource_info[0],"MB",false);
-    	        	  ischanged = true;
-    	          }
-    	          if(!resource_disk.getCurr().equals(resource_info[1]))
-    	          {
-    	        	  resource_disk = new Resource_DISK("DISK",resource_info[1],"GB",false);
-    	        	  ischanged = true;
-    	          }
-    	          if(!resource_cpu.getCurr().equals(resource_info[2]))
-    	          {
-    	        	  resource_cpu = new Resource_CPU("CPU",resource_info[2],"%",false);
-    	        	  ischanged = true;
-    	          }
-    	          
-    	          if(ischanged) { //update only when there is any change
+        
+        while (true) {
+          while (input.available() > 0) {
+              int i = input.read(tmp, 0, 1024);
+              if (i < 0) break;
+              result=new String(tmp, 0, i);                                
+          }
+          if (channel.isClosed()){
+          	System.out.println("exit-status: " + channel.getExitStatus());
+              break;
+          }       
+          Thread.sleep(1000);
+        }
 
-    			      System.out.println(resource_mem.getName()+" : " + resource_mem.getCurr() + resource_mem.getUnit());
-    			      System.out.println(resource_disk.getName()+" : " + resource_disk.getCurr() + resource_disk.getUnit());
-    			      System.out.println(resource_cpu.getName()+" : " + resource_cpu.getCurr() + resource_cpu.getUnit());
-    			      ischanged=false;
-    	    	  }
-    	    	  
-    		      System.out.println(resource_info[3]);
-    		      
-    	          Thread.sleep(3000);
-    	          
-	    		}
-	            catch(Exception e){
-	              System.out.println(e);
-	            }
-    		
-    		}
-    	}
+        channel.disconnect();
+        session.disconnect();
+        
+		} catch (Exception e)
+		{
+			System.out.println(e);
+		}
+
+        String[] resource_info = result.split("\\n");
+    	     
+		return resource_info[0];
     	
     }
-    */
 }
