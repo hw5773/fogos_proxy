@@ -8,9 +8,9 @@ import FogOSService.Service;
 import FogOSService.ServiceContext;
 import FogOSService.ServiceType;
 
+import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
+import java.nio.ByteBuffer;
 import java.security.*;
 import java.security.spec.InvalidKeySpecException;
 
@@ -22,12 +22,12 @@ import com.jcraft.jsch.Session;
 public class FogProxyCloud {
 	private static FogOSClient fogos;
 	
-	private static String key = "key";
-	private static String host = "ip address";
+	private static final String key = "key";
+	private static final String host = "ip address";
 	
 	private static final String rootPath = "D:\\tmp";
     
-    public static void main(String[] args) throws NoSuchAlgorithmException {
+    public static void main(String[] args) throws NoSuchAlgorithmException, InterruptedException, IOException {
     	// 1. Initialize the FogOSClient instance.
 		// This will automatically build the contentStore inside the core,
 		// a list of services, and a list of resources
@@ -72,44 +72,61 @@ public class FogProxyCloud {
 		fogos.addResource(resource_mem);
 
 		// 2-2. Add content manually if any
-		Content test_content = new Content("test_content", "D:\tmp\test.jpg", true);
+		Content test_content = new Content("test_content", "D:\\tmp\\test.png", true);
 		fogos.addContent(test_content);
 
 		// 2-3. Add service to run
-		KeyPairGenerator serviceKeyPairGenerator = KeyPairGenerator.getInstance("RSA");
-		serviceKeyPairGenerator.initialize(2048);
-		KeyPair serviceKeyPair = serviceKeyPairGenerator.genKeyPair();
-		Locator serviceLoc = new Locator(InterfaceType.WIFI, "127.0.0.1", 5550);
-		Locator proxyLoc = new Locator(InterfaceType.ETH, "127.0.0.1", 5551);
-		ServiceContext testServiceCtx = new ServiceContext("FogClientTestService",
-				ServiceType.Streaming, serviceKeyPair, serviceLoc, true, proxyLoc);
-		Service testService = new Service(testServiceCtx) {
+		KeyPairGenerator proxyKeyPairGenerator = KeyPairGenerator.getInstance("RSA");
+		proxyKeyPairGenerator.initialize(2048);
+		KeyPair proxyKeyPair = proxyKeyPairGenerator.genKeyPair();
+		Locator proxyLoc = new Locator(InterfaceType.WIFI, "127.0.0.1", 5550);
+		Locator serverLoc = new Locator(InterfaceType.ETH, "127.0.0.1", 5551);
+		ServiceContext testServiceCtx1 = new ServiceContext("FogClientTestService",
+				ServiceType.Streaming, proxyKeyPair, proxyLoc, true, serverLoc);
+		Service testService1 = new Service(testServiceCtx1) {
 			@Override
 			public void initService() throws NoSuchAlgorithmException, InvalidKeySpecException, InvalidKeyException, SignatureException, InterruptedException {
 				super.initService();
 			}
 
 			@Override
-			public void processInputFromProxy() {
-				super.processInputFromProxy();
+			public void processInputFromServer() {
+				// Fetch data from the buffer
+				byte[] buf = new byte[16384];
+				ByteBuffer input = this.getInputFromServer(buf);
+				// Send data to Peer
+				this.putOutputToPeer(input);
 			}
 
 			@Override
-			public void processOutputToProxy() {
-				super.processOutputToProxy();
+			public void processOutputToServer() {
+				// Fetch data from the buffer
+				byte[] buf = new byte[16384];
+				ByteBuffer output = this.getOutputToServer(buf);
+				// Send data to Server
+				byte[] outputBuf = output.array();
+				this.getServerSession().send(outputBuf, outputBuf.length);
 			}
 
 			@Override
 			public void processInputFromPeer() {
-
+				byte[] buf = new byte[16384];
+				ByteBuffer input = this.getInputFromPeer(buf);
+				if (this.getContext().isProxy())
+					this.putOutputToServer(input);
 			}
 
 			@Override
 			public void processOutputToPeer() {
-
+				// Fetch Data from the Buffer
+				byte[] buf = new byte[16384];
+				ByteBuffer output = this.getOutputToPeer(buf);
+				// Send Data to Peer
+				byte[] outputBuf = output.array();
+				this.getPeerSession().send(outputBuf, outputBuf.length);
 			}
 		};
-		fogos.addService(testService);
+		fogos.addService(testService1);
         
         // 3. begin the FogOS interaction
 		fogos.begin();
@@ -124,50 +141,52 @@ public class FogProxyCloud {
     private static String monitoring(String privkey_str, String host_ip, String command) {
 
         String result = null;
+		String[] resource_info = null;
         
 		try {
-        JSch jsch=new JSch();
-        jsch.addIdentity(privkey_str);
-        JSch.setConfig("StrictHostKeyChecking", "no");
+        	JSch jsch=new JSch();
+        	jsch.addIdentity(privkey_str);
+        	JSch.setConfig("StrictHostKeyChecking", "no");
           	  
-        String user="ubuntu";
+   	     	String user="ubuntu";
 
-        Session session=jsch.getSession(user, host_ip, 22);
-        session.connect(30000); 
+        	Session session=jsch.getSession(user, host_ip, 22);
+        	session.connect(30000);
         
-        ChannelExec channel = (ChannelExec)session.openChannel("exec");
-        channel.setCommand(command);
-        channel.setErrStream(System.err);
-        channel.connect();
+        	ChannelExec channel = (ChannelExec)session.openChannel("exec");
+        	channel.setCommand(command);
+        	channel.setErrStream(System.err);
+        	channel.connect();
       
 
-        InputStream input = channel.getInputStream();        
+        	InputStream input = channel.getInputStream();
         
-        byte[] tmp = new byte[1024];
+        	byte[] tmp = new byte[1024];
 
         
-        while (true) {
-          while (input.available() > 0) {
-              int i = input.read(tmp, 0, 1024);
-              if (i < 0) break;
-              result=new String(tmp, 0, i);                                
-          }
-          if (channel.isClosed()){
-          	System.out.println("exit-status: " + channel.getExitStatus());
-              break;
-          }       
-          Thread.sleep(1000);
-        }
+        	while (true) {
+          		while (input.available() > 0) {
+              		int i = input.read(tmp, 0, 1024);
+              		if (i < 0) break;
+              		result=new String(tmp, 0, i);
+          		}
+          		if (channel.isClosed()){
+          			System.out.println("exit-status: " + channel.getExitStatus());
+              		break;
+          		}
+          		Thread.sleep(1000);
+        	}
 
-        channel.disconnect();
-        session.disconnect();
+        	channel.disconnect();
+        	session.disconnect();
         
 		} catch (Exception e)
 		{
 			System.out.println(e);
 		}
 
-        String[] resource_info = result.split("\\n");
+		if (result != null)
+        	resource_info = result.split("\\n");
     	     
 		return resource_info[0];
     	
