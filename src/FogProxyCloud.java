@@ -80,12 +80,12 @@ public class FogProxyCloud {
 		proxyKeyPairGenerator.initialize(2048);
 		KeyPair proxyKeyPair = proxyKeyPairGenerator.genKeyPair();
 		Locator proxyLoc = new Locator(InterfaceType.WIFI, "127.0.0.1", 5550);
-		Locator serverLoc = new Locator(InterfaceType.ETH, "127.0.0.1", 5551);
+		Locator serverLoc = new Locator(InterfaceType.ETH, "52.78.23.173", 80);
 		ServiceContext testServiceCtx1 = new ServiceContext("FogClientTestService",
 				ServiceType.Streaming, proxyKeyPair, proxyLoc, true, serverLoc);
 		Service testService1 = new Service(testServiceCtx1) {
 			@Override
-			public void initService() throws NoSuchAlgorithmException, InvalidKeySpecException, InvalidKeyException, SignatureException, InterruptedException {
+			public void initService() throws NoSuchAlgorithmException, InvalidKeySpecException, InvalidKeyException, SignatureException, IOException {
 				super.initService();
 			}
 
@@ -105,7 +105,11 @@ public class FogProxyCloud {
 				ByteBuffer output = this.getOutputToServer(buf);
 				// Send data to Server
 				byte[] outputBuf = output.array();
-				this.getServerSession().send(outputBuf, outputBuf.length);
+				try {
+					this.getServerSession().send(outputBuf, outputBuf.length);
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
 			}
 
 			@Override
