@@ -27,8 +27,8 @@ public class FogProxyCloud {
 	private static final String key = "key";
 	private static final String host = "ip address";
 
-	//private static final String rootPath = "D:\\tmp";
-	private static final String rootPath = "C:\\Users\\HMLEE\\FogOS";
+	private static final String rootPath = "D:\\tmp";
+	//private static final String rootPath = "C:\\Users\\HMLEE\\FogOS";
     
     public static void main(String[] args) throws NoSuchAlgorithmException, InterruptedException, IOException {
     	// 1. Initialize the FogOSClient instance.
@@ -77,8 +77,8 @@ public class FogProxyCloud {
 		*/
 
 		// 2-2. Add content manually if any
-		//Content test_content = new Content("test_content", "D:\\tmp\\test.png", true);
-		Content test_content = new Content("test_content", "C:\\Users\\HMLEE\\FogOS\\test.txt", true);
+		Content test_content = new Content("test_content", "D:\\tmp\\test.png", true);
+		//Content test_content = new Content("test_content", "C:\\Users\\HMLEE\\FogOS\\test.txt", true);
 		fogos.addContent(test_content);
 
 
@@ -116,7 +116,7 @@ public class FogProxyCloud {
 				// Send data to Server
 				byte[] outputBuf = output.array();
 				try {
-					this.getServerSession().send(outputBuf, outputBuf.length);
+					this.getServerSession().send(outputBuf, buf.length);
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
@@ -127,6 +127,8 @@ public class FogProxyCloud {
 			public void processInputFromPeer() {
 				byte[] buf = new byte[16384];
 				ByteBuffer input = this.getInputFromPeer(buf);
+				//System.out.println("!!!!!!!!!!!!!");
+				//System.out.println(new String(input.array()).trim());
 				if (this.getContext().isProxy())
 					this.putOutputToServer(input);
 				input.clear();
@@ -139,10 +141,8 @@ public class FogProxyCloud {
 				ByteBuffer output = this.getOutputToPeer(buf);
 				// Send Data to Peer
 				byte[] outputBuf = output.array();
-				System.out.println("HBBBBBBBBBBBBBBBBBBBBBB");
-				System.out.println(new String(outputBuf).trim());
-				SecureFlexIDSession secureFlexIDSession = getPeerSession();
-				secureFlexIDSession.send(new String(outputBuf).trim());
+				SecureFlexIDSession secureFlexIDSession = this.getPeerSession();
+				secureFlexIDSession.send(outputBuf, buf.length);
 				output.clear();
 			}
 		};
