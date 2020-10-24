@@ -98,52 +98,54 @@ public class FogProxyCloud {
 
 			@Override
 			public void processInputFromServer() {
+				System.out.println("[Service] Start: processInputFromServer()");
 				// Fetch data from the buffer
 				byte[] buf = new byte[16384];
-				ByteBuffer input = this.getInputFromServer(buf);
+				int len = this.getInputFromServer(buf);
 				// Send data to Peer
 				//System.out.println("!!!!!!!!!!!!!!!!!!!!!");
 				//System.out.println(new String(input.array()).trim());
-				this.putOutputToPeer(input);
-				input.clear();
+				this.putOutputToPeer(buf, len);
+				System.out.println("[Service] Finish: processInputFromServer()");
 			}
 
 			@Override
 			public void processOutputToServer() {
+				System.out.println("[Service] Start: processOutputToServer()");
 				// Fetch data from the buffer
 				byte[] buf = new byte[16384];
-				ByteBuffer output = this.getOutputToServer(buf);
+				int len = this.getOutputToServer(buf);
 				// Send data to Server
-				byte[] outputBuf = output.array();
 				try {
-					this.getServerSession().send(outputBuf, buf.length);
+					this.getServerSession().send(buf, len);
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
-				output.clear();
+				System.out.println("[Service] Finish: processInputFromServer()");
 			}
 
 			@Override
 			public void processInputFromPeer() {
+				System.out.println("[Service] Start: processInputFromPeer()");
 				byte[] buf = new byte[16384];
-				ByteBuffer input = this.getInputFromPeer(buf);
-				//System.out.println("!!!!!!!!!!!!!");
-				//System.out.println(new String(input.array()).trim());
+				int len = this.getInputFromPeer(buf);
+				System.out.println("[Service] Received in processInputFromPeer(): " + new String(buf));
+
 				if (this.getContext().isProxy())
-					this.putOutputToServer(input);
-				input.clear();
+					this.putOutputToServer(buf, len);
+				System.out.println("[Service] Finish: processInputFromPeer()");
 			}
 
 			@Override
 			public void processOutputToPeer() {
+				System.out.println("[Service] Start: processOutputToPeer()");
 				// Fetch Data from the Buffer
 				byte[] buf = new byte[16384];
-				ByteBuffer output = this.getOutputToPeer(buf);
+				int len = this.getOutputToPeer(buf);
 				// Send Data to Peer
-				byte[] outputBuf = output.array();
 				SecureFlexIDSession secureFlexIDSession = this.getPeerSession();
-				secureFlexIDSession.send(outputBuf, buf.length);
-				output.clear();
+				secureFlexIDSession.send(buf, len);
+				System.out.println("[Service] Finish: processOutputToPeer()");
 			}
 		};
 		fogos.addService(testService1);
