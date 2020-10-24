@@ -26,6 +26,7 @@ public class FogProxyCloud {
 	
 	private static final String key = "key";
 	private static final String host = "ip address";
+	private static final int BUFFER_SIZE = 8192;
 
 	private static final String rootPath = "D:\\tmp";
 	//private static final String rootPath = "C:\\Users\\HMLEE\\FogOS";
@@ -102,9 +103,20 @@ public class FogProxyCloud {
 				// Fetch data from the buffer
 				byte[] buf = new byte[16384];
 				int len = this.getInputFromServer(buf);
-				// Send data to Peer
-				//System.out.println("!!!!!!!!!!!!!!!!!!!!!");
-				//System.out.println(new String(input.array()).trim());
+
+				System.out.println("[Service] Received in processInputFromServer()");
+				System.out.print("First 5 bytes: " + buf[0] + " " + buf[1] + " " + buf[2] + " " + buf[3] + " " + buf[4]);
+				System.out.println();
+
+				System.out.print("Last 5 bytes: " + buf[len-5] + " " + buf[len-4] + " " + buf[len-3] + " " + buf[len-2] + " " + buf[len-1]);
+				System.out.println();
+
+				try {
+					Thread.sleep(2000);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+
 				this.putOutputToPeer(buf, len);
 				System.out.println("[Service] Finish: processInputFromServer()");
 			}
@@ -115,12 +127,27 @@ public class FogProxyCloud {
 				// Fetch data from the buffer
 				byte[] buf = new byte[16384];
 				int len = this.getOutputToServer(buf);
+
 				// Send data to Server
 				try {
 					this.getServerSession().send(buf, len);
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
+
+				System.out.println("[Service] Written in processOutputToServer()");
+				System.out.print("First 5 bytes: " + buf[0] + " " + buf[1] + " " + buf[2] + " " + buf[3] + " " + buf[4]);
+				System.out.println();
+
+				System.out.print("Last 5 bytes: " + buf[len-5] + " " + buf[len-4] + " " + buf[len-3] + " " + buf[len-2] + " " + buf[len-1]);
+				System.out.println();
+
+				try {
+					Thread.sleep(2000);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+
 				System.out.println("[Service] Finish: processInputFromServer()");
 			}
 
@@ -129,7 +156,20 @@ public class FogProxyCloud {
 				System.out.println("[Service] Start: processInputFromPeer()");
 				byte[] buf = new byte[16384];
 				int len = this.getInputFromPeer(buf);
-				System.out.println("[Service] Received in processInputFromPeer(): " + new String(buf));
+				//System.out.println("[Service] Received in processInputFromPeer(): " + new String(buf));
+
+				System.out.println("[Service] Received in processInputFromPeer()");
+				System.out.print("First 5 bytes: " + buf[0] + " " + buf[1] + " " + buf[2] + " " + buf[3] + " " + buf[4]);
+				System.out.println();
+
+				System.out.print("Last 5 bytes: " + buf[len-5] + " " + buf[len-4] + " " + buf[len-3] + " " + buf[len-2] + " " + buf[len-1]);
+				System.out.println();
+
+				try {
+					Thread.sleep(2000);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
 
 				if (this.getContext().isProxy())
 					this.putOutputToServer(buf, len);
@@ -145,6 +185,19 @@ public class FogProxyCloud {
 				// Send Data to Peer
 				SecureFlexIDSession secureFlexIDSession = this.getPeerSession();
 				secureFlexIDSession.send(buf, len);
+
+				System.out.println("[Service] Written in processOutputToPeer()");
+				System.out.print("First 5 bytes: " + buf[0] + " " + buf[1] + " " + buf[2] + " " + buf[3] + " " + buf[4]);
+				System.out.println();
+
+				System.out.print("Last 5 bytes: " + buf[len-5] + " " + buf[len-4] + " " + buf[len-3] + " " + buf[len-2] + " " + buf[len-1]);
+				System.out.println();
+
+				try {
+					Thread.sleep(2000);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
 				System.out.println("[Service] Finish: processOutputToPeer()");
 			}
 		};
