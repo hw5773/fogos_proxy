@@ -11,6 +11,7 @@ import FogOSService.ServiceType;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.security.*;
 import java.security.spec.InvalidKeySpecException;
@@ -127,6 +128,7 @@ public class FogProxyCloud {
 				// Fetch data from the buffer
 				byte[] buf = new byte[16384];
 				int len = this.getOutputToServer(buf);
+				System.out.println("[Service] Sent in processOutputToServer(): " + new String(buf));
 
 				// Send data to Server
 				try {
@@ -156,7 +158,7 @@ public class FogProxyCloud {
 				System.out.println("[Service] Start: processInputFromPeer()");
 				byte[] buf = new byte[16384];
 				int len = this.getInputFromPeer(buf);
-				//System.out.println("[Service] Received in processInputFromPeer(): " + new String(buf));
+				System.out.println("[Service] Received in processInputFromPeer(): " + new String(buf));
 
 				System.out.println("[Service] Received in processInputFromPeer()");
 				System.out.print("First 5 bytes: " + buf[0] + " " + buf[1] + " " + buf[2] + " " + buf[3] + " " + buf[4]);
@@ -184,7 +186,11 @@ public class FogProxyCloud {
 				int len = this.getOutputToPeer(buf);
 				// Send Data to Peer
 				SecureFlexIDSession secureFlexIDSession = this.getPeerSession();
-				secureFlexIDSession.send(buf, len);
+				try {
+					secureFlexIDSession.send(buf, len);
+				} catch (UnsupportedEncodingException e) {
+					e.printStackTrace();
+				}
 
 				System.out.println("[Service] Written in processOutputToPeer()");
 				System.out.print("First 5 bytes: " + buf[0] + " " + buf[1] + " " + buf[2] + " " + buf[3] + " " + buf[4]);
