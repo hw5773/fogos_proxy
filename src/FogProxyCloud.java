@@ -9,16 +9,19 @@ import FogOSService.Service;
 import FogOSService.ServiceContext;
 import FogOSService.ServiceType;
 
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.security.*;
 import java.security.spec.InvalidKeySpecException;
 import java.util.HashMap;
 
+import FogOSSocket.FlexIDSession;
 import com.jcraft.jsch.ChannelExec;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.Session;
+import org.json.JSONObject;
 
 
 public class FogProxyCloud {
@@ -28,8 +31,8 @@ public class FogProxyCloud {
 	private static final String host = "ip address";
 	private static final int BUFFER_SIZE = 8192;
 
-	private static final String rootPath = "D:\\tmp";
-	//private static final String rootPath = "C:\\Users\\HMLEE\\FogOS";
+	//private static final String rootPath = "D:\\tmp";
+	private static final String rootPath = "C:\\Users\\HMLEE\\FogOS";
     
     public static void main(String[] args) throws NoSuchAlgorithmException, InterruptedException, IOException {
     	// 1. Initialize the FogOSClient instance.
@@ -78,8 +81,8 @@ public class FogProxyCloud {
 		*/
 
 		// 2-2. Add content manually if any
-		Content test_content = new Content("test_content", "D:\\tmp\\test.png", true);
-		//Content test_content = new Content("test_content", "C:\\Users\\HMLEE\\FogOS\\test.txt", true);
+		//Content test_content = new Content("test_content", "D:\\tmp\\test.png", true);
+		Content test_content = new Content("test_content", "C:\\Users\\HMLEE\\FogOS\\test.txt", true);
 		fogos.addContent(test_content);
 
 
@@ -104,18 +107,15 @@ public class FogProxyCloud {
 				byte[] buf = new byte[16384];
 				int len = this.getInputFromServer(buf);
 
+				/*
 				System.out.println("[Service] Received in processInputFromServer()");
 				System.out.print("First 5 bytes: " + buf[0] + " " + buf[1] + " " + buf[2] + " " + buf[3] + " " + buf[4]);
 				System.out.println();
 
 				System.out.print("Last 5 bytes: " + buf[len-5] + " " + buf[len-4] + " " + buf[len-3] + " " + buf[len-2] + " " + buf[len-1]);
 				System.out.println();
+				 */
 
-				try {
-					Thread.sleep(2000);
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
 
 				this.putOutputToPeer(buf, len);
 				System.out.println("[Service] Finish: processInputFromServer()");
@@ -135,19 +135,14 @@ public class FogProxyCloud {
 					e.printStackTrace();
 				}
 
+				/*
 				System.out.println("[Service] Written in processOutputToServer()");
 				System.out.print("First 5 bytes: " + buf[0] + " " + buf[1] + " " + buf[2] + " " + buf[3] + " " + buf[4]);
 				System.out.println();
 
 				System.out.print("Last 5 bytes: " + buf[len-5] + " " + buf[len-4] + " " + buf[len-3] + " " + buf[len-2] + " " + buf[len-1]);
 				System.out.println();
-
-				try {
-					Thread.sleep(2000);
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-
+				 */
 				System.out.println("[Service] Finish: processInputFromServer()");
 			}
 
@@ -158,18 +153,14 @@ public class FogProxyCloud {
 				int len = this.getInputFromPeer(buf);
 				//System.out.println("[Service] Received in processInputFromPeer(): " + new String(buf));
 
+				/*
 				System.out.println("[Service] Received in processInputFromPeer()");
 				System.out.print("First 5 bytes: " + buf[0] + " " + buf[1] + " " + buf[2] + " " + buf[3] + " " + buf[4]);
 				System.out.println();
 
 				System.out.print("Last 5 bytes: " + buf[len-5] + " " + buf[len-4] + " " + buf[len-3] + " " + buf[len-2] + " " + buf[len-1]);
 				System.out.println();
-
-				try {
-					Thread.sleep(2000);
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
+				*/
 
 				if (this.getContext().isProxy())
 					this.putOutputToServer(buf, len);
@@ -182,22 +173,23 @@ public class FogProxyCloud {
 				// Fetch Data from the Buffer
 				byte[] buf = new byte[16384];
 				int len = this.getOutputToPeer(buf);
-				// Send Data to Peer
-				SecureFlexIDSession secureFlexIDSession = this.getPeerSession();
-				secureFlexIDSession.send(buf, len);
 
+				/*
 				System.out.println("[Service] Written in processOutputToPeer()");
 				System.out.print("First 5 bytes: " + buf[0] + " " + buf[1] + " " + buf[2] + " " + buf[3] + " " + buf[4]);
 				System.out.println();
 
 				System.out.print("Last 5 bytes: " + buf[len-5] + " " + buf[len-4] + " " + buf[len-3] + " " + buf[len-2] + " " + buf[len-1]);
 				System.out.println();
-
+				 */
+				// Send Data to Peer
+				SecureFlexIDSession secureFlexIDSession = this.getPeerSession();
 				try {
-					Thread.sleep(2000);
-				} catch (InterruptedException e) {
+					secureFlexIDSession.send(buf, len);
+				} catch (UnsupportedEncodingException e) {
 					e.printStackTrace();
 				}
+
 				System.out.println("[Service] Finish: processOutputToPeer()");
 			}
 		};
@@ -277,4 +269,5 @@ public class FogProxyCloud {
 		return resource_info[0];
     	
     }
+
 }
